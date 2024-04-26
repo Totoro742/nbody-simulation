@@ -1,29 +1,18 @@
 #pragma once
 
-#include <algorithm>
 #include <array>
-#include <iterator>
 
-namespace utils {
-using Point = std::array<float, 3>;
+namespace utils
+{
+struct Point : std::array<float, 3> {
 
-inline Point& operator+(Point& lhs, Point& rhs) {
-    std::transform(std::begin(lhs), std::end(lhs), std::begin(lhs),
-                   std::begin(lhs), std::plus<void>());
-    return lhs;
-}
+    Point& operator+=(const Point& rhs);
 
-inline Point& operator+(Point& lhs, float scalar) {
-    for (auto& val : lhs) {
-        val += scalar;
-    }
-    return lhs;
-}
+    Point operator-(const Point& rhs) const;
+    Point operator*(float scalar) const;
 
-inline Point& operator*(Point& lhs, float scalar) {
-    for (auto& val : lhs) {
-        val *= scalar;
-    }
-    return lhs;
-}
+    float module() const;
+};
+
+inline constexpr Point zeroPoint{0, 0, 0};
 } // namespace utils
