@@ -7,7 +7,7 @@ namespace algorithms
 {
 class Leapfrog7
 {
-  public:
+public:
     Leapfrog7(std::vector<utils::Point>&& positions,
               std::vector<utils::Point>&& velocities,
               std::vector<float> masses,
@@ -22,7 +22,7 @@ class Leapfrog7
 
     void performeStep();
 
-  private:
+private:
     void updatePositions(const float miniTimeStep);
     void updateVelocities(const float miniTimeStep);
     void updateAcceleration();

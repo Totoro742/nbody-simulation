@@ -7,7 +7,7 @@
 
 namespace utils
 {
-inline Point& Point::operator+=(const Point& rhs)
+Point& Point::operator+=(const Point& rhs)
 {
     Point& lhs{*this};
     std::transform(std::begin(lhs), std::end(lhs), std::begin(rhs),
@@ -15,7 +15,7 @@ inline Point& Point::operator+=(const Point& rhs)
     return lhs;
 }
 
-inline Point Point::operator-(const Point& rhs) const
+Point Point::operator-(const Point& rhs) const
 {
     const Point& lhs{*this};
     Point result{};
@@ -24,7 +24,7 @@ inline Point Point::operator-(const Point& rhs) const
     return result;
 }
 
-inline Point Point::operator*(float scalar) const
+Point Point::operator*(float scalar) const
 {
     const Point& lhs{*this};
     Point result{};
@@ -33,7 +33,7 @@ inline Point Point::operator*(float scalar) const
     return result;
 }
 
-inline float Point::module() const
+float Point::module() const
 {
     const float sumOfSquares{
         std::accumulate(std::begin(*this), std::end(*this), 0.0f,
