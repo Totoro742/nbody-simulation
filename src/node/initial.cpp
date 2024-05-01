@@ -2,16 +2,19 @@
 
 #include "constants.hpp"
 #include "node/NodeConfig.hpp"
+#include "utils/Point.hpp"
+#include <cassert>
 #include <cstdio>
 #include <mpi.h>
 #include <optional>
+#include <vector>
 
 namespace
 {
 /* calculate num of local particles that only first/master node has less
  * particles
  */
-int calcLocalParticles(const node::NodeConfig& config)
+void calcParticlesPerNode(node::NodeConfig& config)
 {
     if (config.totalParticles < config.totalNodes) {
         std::fprintf(stderr,
@@ -22,13 +25,19 @@ int calcLocalParticles(const node::NodeConfig& config)
 
     const int particlesToDivide{config.totalParticles + config.totalNodes - 1};
     const int maxLocalParticles{particlesToDivide / config.totalNodes};
-    const int lastNodeParticles{particlesToDivide % config.totalNodes};
-    return config.nodeRank == masterNodeRank ? lastNodeParticles
-                                             : maxLocalParticles;
+    const int masterNodeParticles{particlesToDivide % config.totalNodes};
+
+    config.localParticles = config.nodeRank == masterNodeRank
+                                ? masterNodeParticles
+                                : maxLocalParticles;
+
+    config.particlesPerNode = std::vector<int>(
+        static_cast<size_t>(config.totalNodes), maxLocalParticles);
+    config.particlesPerNode[masterNodeRank] = masterNodeParticles;
 }
 } // namespace
 
-namespace node
+namespace node::initial
 {
 node::NodeConfig createNodeConfig(const MPI::Comm& comm,
                                   const std::optional<int> totalParticles)
@@ -40,8 +49,31 @@ node::NodeConfig createNodeConfig(const MPI::Comm& comm,
     constexpr int oneElement{1};
     comm.Bcast(&config.totalParticles, oneElement, MPI::INT, masterNodeRank);
 
-    config.localParticles = calcLocalParticles(config);
+    calcParticlesPerNode(config);
 
     return config;
 };
-} // namespace node
+
+/* share particles data
+ */
+void shareData(const MPI::Comm& comm,
+               const NodeConfig& config,
+               utils::ParticlesData& data)
+{
+    assert(data.positions.size() == config.totalParticles);
+    assert(data.velocities.size() == config.totalParticles);
+    assert(data.masses.size() == config.totalParticles);
+
+    auto pointMpiType{utils::Point::mpiType()};
+    pointMpiType.Commit();
+
+    comm.Bcast(data.positions.data(), config.totalParticles, pointMpiType,
+               masterNodeRank);
+    comm.Bcast(data.velocities.data(), config.totalParticles, pointMpiType,
+               masterNodeRank);
+    comm.Bcast(data.masses.data(), config.totalParticles, MPI::INT,
+               masterNodeRank);
+
+    pointMpiType.Free();
+};
+} // namespace node::initial
