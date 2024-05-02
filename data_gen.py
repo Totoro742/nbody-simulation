@@ -29,6 +29,5 @@ for i in range(n_bodies):
     bodies.append((x, y, z, mass, v))
 
 with open(filename, 'w') as f:
-    f.write(str(n_bodies) + '\n')
     for body in bodies:
         f.write(str(body[0]) + ',' + str(body[1]) + ',' + str(body[2]) + ',' + str(body[3]) + ',' + str(body[4]) + '\n')
