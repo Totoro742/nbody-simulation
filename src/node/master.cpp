@@ -1,15 +1,65 @@
 #include "node/master.hpp"
 
+#include "argparse/argparse.hpp"
 #include "node/initial.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
+#include <exception>
 #include <mpi.h>
+#include <optional>
+#include <string>
+#include <vector>
+
+namespace
+{
+struct ProgramOptions {
+    std::string fileInput;
+    std::string fileOutput;
+};
+
+std::optional<ProgramOptions>
+parseArguments(const std::vector<std::string>& args)
+{
+    ProgramOptions options{};
+    argparse::ArgumentParser parser{"nbody-mpi"};
+
+    parser.add_argument("--input-file", "-i")
+        .help("path to file with input data")
+        .required()
+        .store_into(options.fileInput);
+
+    parser.add_argument("--output-file", "-o")
+        .help("path to file where output data will be saved")
+        .default_value("output.csv")
+        .required()
+        .nargs(1)
+        .store_into(options.fileOutput);
+
+    try {
+        parser.parse_args(args);
+    } catch (const std::exception& err) {
+        std::cerr << err.what() << std::endl;
+        std::cerr << parser;
+        return std::nullopt;
+    }
+
+    return options;
+}
+} // namespace
 
 namespace node::master
 {
-void run(const MPI::Comm& comm, std::vector<std::string_view>& args)
+void run(const MPI::Comm& comm, const std::vector<std::string>& args)
 {
-    // TODO handle arguments
+    const auto options{parseArguments(args)};
+
+    // stop processes by sending 0 as number of particles
+    if (not options.has_value()) {
+        constexpr int zeroParticles{0};
+        initial::createNodeConfig(comm, zeroParticles);
+        return;
+    }
+
     // TODO load data
 
     constexpr int totalParticlesDummy{1000};

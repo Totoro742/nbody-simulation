@@ -22,6 +22,10 @@ void run(const MPI::Comm& comm)
 {
     const auto config{initial::createNodeConfig(comm)};
 
+    if (config.totalParticles == 0) {
+        return;
+    }
+
     auto data{createStoreForParticles(config)};
     initial::shareData(comm, config, data);
 }

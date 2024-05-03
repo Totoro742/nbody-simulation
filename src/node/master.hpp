@@ -1,10 +1,10 @@
 #pragma once
 
 #include <mpi.h>
-#include <string_view>
+#include <string>
 #include <vector>
 
 namespace node::master
 {
-void run(const MPI::Comm& comm, std::vector<std::string_view>& args);
+void run(const MPI::Comm& comm, const std::vector<std::string>& args);
 }

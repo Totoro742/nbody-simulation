@@ -19,7 +19,7 @@ void calcParticlesPerNode(node::NodeConfig& config)
     if (config.totalParticles < config.totalNodes) {
         std::fprintf(stderr,
                      "(%d) ERR: number of particles lower than number of nodes "
-                     "resulting in UB",
+                     "resulting in UB\n",
                      config.nodeRank);
     }
 
@@ -49,7 +49,9 @@ node::NodeConfig createNodeConfig(const MPI::Comm& comm,
     constexpr int oneElement{1};
     comm.Bcast(&config.totalParticles, oneElement, MPI::INT, masterNodeRank);
 
-    calcParticlesPerNode(config);
+    if (config.totalParticles != 0) {
+        calcParticlesPerNode(config);
+    }
 
     return config;
 };
