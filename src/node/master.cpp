@@ -2,9 +2,11 @@
 
 #include "argparse/argparse.hpp"
 #include "node/initial.hpp"
+#include "utils/DataLoader.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
 #include "utils/SimParams.hpp"
+#include <cstdio>
 #include <exception>
 #include <mpi.h>
 #include <optional>
@@ -64,26 +66,32 @@ namespace node::master
 {
 void run(const MPI::Comm& comm, const std::vector<std::string>& args)
 {
-    const auto options{parseArguments(args)};
+    const auto programOptions{parseArguments(args)};
 
     // stop processes by sending 0 as number of particles
-    if (not options.has_value()) {
+    if (not programOptions.has_value()) {
         constexpr int zeroParticles{0};
         initial::createNodeConfig(comm, zeroParticles);
         return;
     }
 
-    // TODO load data
+    utils::ParticlesData data{
+        utils::loadParticlesData(programOptions->fileInput)};
 
-    constexpr int totalParticlesDummy{1000};
-    utils::ParticlesData dataDummy{
-        std::vector(totalParticlesDummy, utils::Point{0, 1, 2}),
-        std::vector(totalParticlesDummy, utils::Point{5, 5, 5}),
-        std::vector(totalParticlesDummy, 21.37f)};
+    const auto totalParticles{data.positions.size()};
+    const auto config{initial::createNodeConfig(comm, totalParticles)};
 
-    const auto config{initial::createNodeConfig(comm, totalParticlesDummy)};
+    if (totalParticles == 0) {
+        std::fprintf(stderr, "No particles in file %s\n",
+                     programOptions->fileInput.c_str());
+        return;
+    }
 
-    initial::shareData(comm, config, options->simParams, dataDummy);
+    for (const auto& point : data.positions) {
+        std::printf("%f %f %f\n", point[0], point[1], point[2]);
+    }
+
+    initial::shareData(comm, config, programOptions->simParams, data);
 
     // TODO algorithm
 }
