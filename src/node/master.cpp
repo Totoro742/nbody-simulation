@@ -4,6 +4,7 @@
 #include "node/initial.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
+#include "utils/SimParams.hpp"
 #include <exception>
 #include <mpi.h>
 #include <optional>
@@ -15,6 +16,7 @@ namespace
 struct ProgramOptions {
     std::string fileInput;
     std::string fileOutput;
+    utils::SimParams simParams;
 };
 
 std::optional<ProgramOptions>
@@ -22,6 +24,18 @@ parseArguments(const std::vector<std::string>& args)
 {
     ProgramOptions options{};
     argparse::ArgumentParser parser{"nbody-mpi"};
+
+    parser.add_argument("-t", "--time-step")
+        .help("time step for calculations")
+        .scan<'g', float>()
+        .required()
+        .store_into(options.simParams.timeStep);
+
+    parser.add_argument("-n", "--iterations")
+        .help("number of iterations")
+        .scan<'u', unsigned long>()
+        .required()
+        .store_into(options.simParams.iterations);
 
     parser.add_argument("--input-file", "-i")
         .help("path to file with input data")
@@ -31,7 +45,6 @@ parseArguments(const std::vector<std::string>& args)
     parser.add_argument("--output-file", "-o")
         .help("path to file where output data will be saved")
         .default_value("output.csv")
-        .required()
         .nargs(1)
         .store_into(options.fileOutput);
 
@@ -70,7 +83,7 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
 
     const auto config{initial::createNodeConfig(comm, totalParticlesDummy)};
 
-    initial::shareData(comm, config, dataDummy);
+    initial::shareData(comm, config, options->simParams, dataDummy);
 
     // TODO algorithm
 }

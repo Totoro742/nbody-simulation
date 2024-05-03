@@ -60,11 +60,17 @@ node::NodeConfig createNodeConfig(const MPI::Comm& comm,
  */
 void shareData(const MPI::Comm& comm,
                const NodeConfig& config,
+               utils::SimParams& simParams,
                utils::ParticlesData& data)
 {
     assert(data.positions.size() == config.totalParticles);
     assert(data.velocities.size() == config.totalParticles);
     assert(data.masses.size() == config.totalParticles);
+
+    constexpr int oneElement{1};
+    comm.Bcast(&simParams.iterations, oneElement, MPI::UNSIGNED_LONG,
+               masterNodeRank);
+    comm.Bcast(&simParams.timeStep, oneElement, MPI::DOUBLE, masterNodeRank);
 
     auto pointMpiType{utils::Point::mpiType()};
     pointMpiType.Commit();

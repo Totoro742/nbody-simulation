@@ -4,6 +4,7 @@
 #include "node/initial.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
+#include "utils/SimParams.hpp"
 #include <vector>
 
 namespace
@@ -26,7 +27,8 @@ void run(const MPI::Comm& comm)
         return;
     }
 
+    utils::SimParams simParams{};
     auto data{createStoreForParticles(config)};
-    initial::shareData(comm, config, data);
+    initial::shareData(comm, config, simParams, data);
 }
 } // namespace node::worker
