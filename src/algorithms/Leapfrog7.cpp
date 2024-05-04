@@ -1,10 +1,8 @@
 #include "algorithms/Leapfrog7.hpp"
 
 #include "utils/Point.hpp"
-#include <algorithm>
 #include <cmath>
-#include <iterator>
-#include <numbers>
+#include <cstdio>
 
 using utils::Point;
 
@@ -23,57 +21,45 @@ Point calcAcceleration(const Point& planet,
 
 namespace algorithms
 {
-void Leapfrog7::performeStep()
-{
-    constexpr auto w{std::numbers::sqrt2};
-    constexpr auto f{2 - w};
-
-    updatePositions(timeStep / (2 * f));
-    updateVelocities(timeStep / f);
-    updatePositions(timeStep * ((1 - w) / 2 * f));
-    updateVelocities(timeStep * (-w / f));
-    updatePositions(timeStep * ((1 - w) / 2 * f));
-    updateVelocities(timeStep / f);
-    updatePositions(timeStep / (2 * f));
-}
-
 void Leapfrog7::updatePositions(const float miniTimeStep)
 {
-    for (int idx{0}; idx < positions.size(); idx++) {
-        positions[idx] += velocities[idx] * miniTimeStep;
+    for (int idx{0}; idx < positions_view.size(); idx++) {
+        positions_view[idx] += data.velocities[idx] * miniTimeStep;
     }
 }
 
 void Leapfrog7::updateVelocities(const float miniTimeStep)
 {
-    updateAcceleration();
-
-    for (int idx{0}; idx < velocities.size(); idx++) {
-        velocities[idx] += accelerations[idx] * miniTimeStep;
+    for (int idx{0}; idx < positions_view.size(); idx++) {
+        data.velocities[idx] +=
+            calcTotalAcceleration(range.first + idx) * miniTimeStep;
     }
 }
 
-void Leapfrog7::updateAcceleration()
+utils::Point Leapfrog7::calcTotalAcceleration(const int planetIdx) const
 {
-    std::fill(std::begin(accelerations), std::end(accelerations),
-              utils::zeroPoint);
+    utils::Point acceleration{utils::zeroPoint};
+    const Point& planet{data.positions[planetIdx]};
 
-    for (int starIdx{0}; starIdx < positions.size(); starIdx++) {
-        const Point& star{positions[starIdx]};
-        const float starMass{masses[starIdx]};
-
-        for (int planetIdx{0}; planetIdx < starIdx; planetIdx++) {
-            const Point& planet{positions[planetIdx]};
-            accelerations[planetIdx] +=
-                calcAcceleration(planet, star, starMass);
-        }
-
-        for (int planetIdx{starIdx}; planetIdx < positions.size();
-             planetIdx++) {
-            const Point& planet{positions[planetIdx]};
-            accelerations[planetIdx] +=
-                calcAcceleration(planet, star, starMass);
-        }
+    for (int starIdx{0}; starIdx < planetIdx; starIdx++) {
+        const Point& star{data.positions[starIdx]};
+        const float starMass{data.masses[starIdx]};
+        acceleration += calcAcceleration(planet, star, starMass);
     }
+
+    for (int starIdx{0}; starIdx < data.positions.size(); starIdx++) {
+        const Point& star{data.positions[starIdx]};
+        const float starMass{data.masses[starIdx]};
+        acceleration += calcAcceleration(planet, star, starMass);
+    }
+
+    const auto size{data.positions.size()};
+    for (int starIdx{planetIdx + 1}; starIdx < size; starIdx++) {
+        const Point& star{data.positions[starIdx]};
+        const float starMass{data.masses[starIdx]};
+        acceleration += calcAcceleration(planet, star, starMass);
+    }
+
+    return acceleration;
 }
 } // namespace algorithms

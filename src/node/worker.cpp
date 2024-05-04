@@ -1,5 +1,6 @@
 #include "node/worker.hpp"
 
+#include "algorithms/Leapfrog7.hpp"
 #include "node/NodeConfig.hpp"
 #include "node/initial.hpp"
 #include "utils/ParticlesData.hpp"
@@ -30,5 +31,20 @@ void run(const MPI::Comm& comm)
     utils::SimParams simParams{};
     auto data{createStoreForParticles(config)};
     initial::shareData(comm, config, simParams, data);
+
+    // TODO looping
+    algorithms::Leapfrog7 leapfrog{data, {0, config.localParticles}};
+
+    auto pointMpiType{utils::Point::mpiType()};
+    pointMpiType.Commit();
+
+    const auto shareFunction{[&](std::vector<utils::Point>& positions) {
+        comm.Allgatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL, positions.data(),
+                        config.particlesPerNode.data(),
+                        config.offsetPerNode.data(), pointMpiType);
+    }};
+    leapfrog.performStep(1, shareFunction);
+
+    pointMpiType.Free();
 }
 } // namespace node::worker

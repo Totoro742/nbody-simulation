@@ -1,5 +1,6 @@
 #include "node/master.hpp"
 
+#include "algorithms/Leapfrog7.hpp"
 #include "argparse/argparse.hpp"
 #include "node/initial.hpp"
 #include "utils/DataLoader.hpp"
@@ -90,6 +91,19 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
     initial::shareData(comm, config, programOptions->simParams, data);
     data.velocities.resize(config.localParticles);
 
-    // TODO algorithm
+    // TODO looping
+    algorithms::Leapfrog7 leapfrog{data, {0, config.localParticles}};
+
+    auto pointMpiType{utils::Point::mpiType()};
+    pointMpiType.Commit();
+
+    const auto shareFunction{[&](std::vector<utils::Point>& positions) {
+        comm.Allgatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL, positions.data(),
+                        config.particlesPerNode.data(),
+                        config.offsetPerNode.data(), pointMpiType);
+    }};
+    leapfrog.performStep(1, shareFunction);
+
+    pointMpiType.Free();
 }
 } // namespace node::master
