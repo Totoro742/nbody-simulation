@@ -12,7 +12,7 @@ namespace
 utils::ParticlesData createStoreForParticles(const node::NodeConfig& config)
 {
     return {std::vector<utils::Point>(config.totalParticles),
-            std::vector<utils::Point>(config.totalParticles),
+            std::vector<utils::Point>(config.localParticles),
             std::vector<float>(config.totalParticles)};
 }
 } // namespace

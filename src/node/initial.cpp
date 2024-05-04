@@ -4,7 +4,6 @@
 #include "node/NodeConfig.hpp"
 #include "utils/Point.hpp"
 #include <algorithm>
-#include <cassert>
 #include <iterator>
 #include <mpi.h>
 #include <numeric>
@@ -60,10 +59,6 @@ void shareData(const MPI::Comm& comm,
                utils::SimParams& simParams,
                utils::ParticlesData& data)
 {
-    assert(data.positions.size() == config.totalParticles);
-    assert(data.velocities.size() == config.totalParticles);
-    assert(data.masses.size() == config.totalParticles);
-
     constexpr int oneElement{1};
     comm.Bcast(&simParams.iterations, oneElement, MPI::UNSIGNED_LONG,
                masterNodeRank);
@@ -74,10 +69,14 @@ void shareData(const MPI::Comm& comm,
 
     comm.Bcast(data.positions.data(), config.totalParticles, pointMpiType,
                masterNodeRank);
-    comm.Bcast(data.velocities.data(), config.totalParticles, pointMpiType,
-               masterNodeRank);
     comm.Bcast(data.masses.data(), config.totalParticles, MPI::INT,
                masterNodeRank);
+
+    const bool isMasterNode{config.nodeRank == masterNodeRank};
+    comm.Scatterv(data.velocities.data(), config.particlesPerNode.data(),
+                  config.offsetPerNode.data(), pointMpiType,
+                  isMasterNode ? MPI::IN_PLACE : data.velocities.data(),
+                  config.localParticles, pointMpiType, masterNodeRank);
 
     pointMpiType.Free();
 };

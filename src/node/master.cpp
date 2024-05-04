@@ -87,11 +87,8 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
-    for (const auto& point : data.positions) {
-        std::printf("%f %f %f\n", point[0], point[1], point[2]);
-    }
-
     initial::shareData(comm, config, programOptions->simParams, data);
+    data.velocities.resize(config.localParticles);
 
     // TODO algorithm
 }
