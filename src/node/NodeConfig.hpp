@@ -10,5 +10,6 @@ struct NodeConfig {
     int totalParticles{0};
     int localParticles{0};
     std::vector<int> particlesPerNode{};
+    std::vector<int> offsetPerNode{};
 };
 } // namespace node

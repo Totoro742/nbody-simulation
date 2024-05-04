@@ -3,9 +3,11 @@
 #include "constants.hpp"
 #include "node/NodeConfig.hpp"
 #include "utils/Point.hpp"
+#include <algorithm>
 #include <cassert>
-#include <cstdio>
+#include <iterator>
 #include <mpi.h>
+#include <numeric>
 #include <optional>
 #include <vector>
 
@@ -16,24 +18,21 @@ namespace
  */
 void calcParticlesPerNode(node::NodeConfig& config)
 {
-    if (config.totalParticles < config.totalNodes) {
-        std::fprintf(stderr,
-                     "(%d) ERR: number of particles lower than number of nodes "
-                     "resulting in UB\n",
-                     config.nodeRank);
-    }
+    const int minLocalParticles{config.totalParticles / config.totalNodes};
+    const int remainingParticles{config.totalParticles % config.totalNodes};
 
-    const int particlesToDivide{config.totalParticles + config.totalNodes - 1};
-    const int maxLocalParticles{particlesToDivide / config.totalNodes};
-    const int masterNodeParticles{particlesToDivide % config.totalNodes};
+    config.particlesPerNode.reserve(config.totalNodes);
+    std::fill_n(std::back_insert_iterator(config.particlesPerNode),
+                config.totalNodes - remainingParticles, minLocalParticles);
+    std::fill_n(std::back_insert_iterator(config.particlesPerNode),
+                remainingParticles, minLocalParticles + 1);
 
-    config.localParticles = config.nodeRank == masterNodeRank
-                                ? masterNodeParticles
-                                : maxLocalParticles;
+    config.localParticles = config.particlesPerNode[config.nodeRank];
 
-    config.particlesPerNode = std::vector<int>(
-        static_cast<size_t>(config.totalNodes), maxLocalParticles);
-    config.particlesPerNode[masterNodeRank] = masterNodeParticles;
+    config.offsetPerNode.reserve(config.totalNodes);
+    std::exclusive_scan(config.particlesPerNode.begin(),
+                        config.particlesPerNode.end(),
+                        config.offsetPerNode.begin(), 0);
 }
 } // namespace
 
@@ -49,9 +48,7 @@ node::NodeConfig createNodeConfig(const MPI::Comm& comm,
     constexpr int oneElement{1};
     comm.Bcast(&config.totalParticles, oneElement, MPI::INT, masterNodeRank);
 
-    if (config.totalParticles != 0) {
-        calcParticlesPerNode(config);
-    }
+    calcParticlesPerNode(config);
 
     return config;
 };
