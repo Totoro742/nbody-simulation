@@ -2,7 +2,7 @@
 
 #include "algorithms/Leapfrog7.hpp"
 #include "node/NodeConfig.hpp"
-#include "node/initial.hpp"
+#include "node/common.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
 #include "utils/SimParams.hpp"
@@ -22,7 +22,7 @@ namespace node::worker
 {
 void run(const MPI::Comm& comm)
 {
-    const auto config{initial::createNodeConfig(comm)};
+    const auto config{common::createNodeConfig(comm)};
 
     if (config.totalParticles == 0) {
         return;
@@ -30,7 +30,7 @@ void run(const MPI::Comm& comm)
 
     utils::SimParams simParams{};
     auto data{createStoreForParticles(config)};
-    initial::shareData(comm, config, simParams, data);
+    common::initialShareData(comm, config, simParams, data);
 
     // TODO looping
     algorithms::Leapfrog7 leapfrog{data, {0, config.localParticles}};

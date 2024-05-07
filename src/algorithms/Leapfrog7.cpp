@@ -2,7 +2,6 @@
 
 #include "utils/Point.hpp"
 #include <cmath>
-#include <cstdio>
 
 using utils::Point;
 
@@ -42,12 +41,6 @@ utils::Point Leapfrog7::calcTotalAcceleration(const int planetIdx) const
     const Point& planet{data.positions[planetIdx]};
 
     for (int starIdx{0}; starIdx < planetIdx; starIdx++) {
-        const Point& star{data.positions[starIdx]};
-        const float starMass{data.masses[starIdx]};
-        acceleration += calcAcceleration(planet, star, starMass);
-    }
-
-    for (int starIdx{0}; starIdx < data.positions.size(); starIdx++) {
         const Point& star{data.positions[starIdx]};
         const float starMass{data.masses[starIdx]};
         acceleration += calcAcceleration(planet, star, starMass);

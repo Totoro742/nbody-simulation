@@ -1,4 +1,4 @@
-#include "node/initial.hpp"
+#include "node/common.hpp"
 
 #include "constants.hpp"
 #include "node/NodeConfig.hpp"
@@ -8,7 +8,6 @@
 #include <mpi.h>
 #include <numeric>
 #include <optional>
-#include <vector>
 
 namespace
 {
@@ -35,7 +34,7 @@ void calcParticlesPerNode(node::NodeConfig& config)
 }
 } // namespace
 
-namespace node::initial
+namespace node::common
 {
 node::NodeConfig createNodeConfig(const MPI::Comm& comm,
                                   const std::optional<int> totalParticles)
@@ -52,12 +51,10 @@ node::NodeConfig createNodeConfig(const MPI::Comm& comm,
     return config;
 };
 
-/* share particles data
- */
-void shareData(const MPI::Comm& comm,
-               const NodeConfig& config,
-               utils::SimParams& simParams,
-               utils::ParticlesData& data)
+void initialShareData(const MPI::Comm& comm,
+                      const NodeConfig& config,
+                      utils::SimParams& simParams,
+                      utils::ParticlesData& data)
 {
     constexpr int oneElement{1};
     comm.Bcast(&simParams.iterations, oneElement, MPI::UNSIGNED_LONG,
@@ -80,4 +77,4 @@ void shareData(const MPI::Comm& comm,
 
     pointMpiType.Free();
 };
-} // namespace node::initial
+} // namespace node::common

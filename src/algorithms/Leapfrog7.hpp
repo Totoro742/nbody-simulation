@@ -16,7 +16,7 @@ public:
     {
     }
 
-    template <std::invocable<std::vector<utils::Point>&> ShareFunction>
+    template <std::invocable<utils::PointVector&> ShareFunction>
     void performStep(const float timeStep, const ShareFunction shareFunction)
     {
         constexpr auto w{std::numbers::sqrt2};

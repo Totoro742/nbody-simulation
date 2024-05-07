@@ -5,9 +5,11 @@
 
 namespace utils
 {
+using PointVector = std::vector<Point>;
+
 struct ParticlesData {
-    std::vector<Point> positions;
-    std::vector<Point> velocities;
+    PointVector positions;
+    PointVector velocities;
     std::vector<float> masses;
 };
 } // namespace utils

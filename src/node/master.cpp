@@ -2,7 +2,7 @@
 
 #include "algorithms/Leapfrog7.hpp"
 #include "argparse/argparse.hpp"
-#include "node/initial.hpp"
+#include "node/common.hpp"
 #include "utils/DataLoader.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
@@ -72,7 +72,7 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
     // stop processes by sending 0 as number of particles
     if (not programOptions.has_value()) {
         constexpr int zeroParticles{0};
-        initial::createNodeConfig(comm, zeroParticles);
+        common::createNodeConfig(comm, zeroParticles);
         return;
     }
 
@@ -80,7 +80,7 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         utils::loadParticlesData(programOptions->fileInput)};
 
     const auto totalParticles{data.positions.size()};
-    const auto config{initial::createNodeConfig(comm, totalParticles)};
+    const auto config{common::createNodeConfig(comm, totalParticles)};
 
     if (totalParticles == 0) {
         std::fprintf(stderr, "No particles in file %s\n",
@@ -88,7 +88,7 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
-    initial::shareData(comm, config, programOptions->simParams, data);
+    common::initialShareData(comm, config, programOptions->simParams, data);
     data.velocities.resize(config.localParticles);
 
     // TODO looping
