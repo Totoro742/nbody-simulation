@@ -1,7 +1,7 @@
 #include "node/master.hpp"
 
-#include "algorithms/Leapfrog7.hpp"
 #include "argparse/argparse.hpp"
+#include "constants.hpp"
 #include "node/common.hpp"
 #include "utils/DataLoader.hpp"
 #include "utils/ParticlesData.hpp"
@@ -9,6 +9,8 @@
 #include "utils/SimParams.hpp"
 #include <cstdio>
 #include <exception>
+#include <fstream>
+#include <ios>
 #include <mpi.h>
 #include <optional>
 #include <string>
@@ -61,6 +63,22 @@ parseArguments(const std::vector<std::string>& args)
 
     return options;
 }
+
+void printMasses(std::ofstream& output, const std::vector<float> masses)
+{
+    for (const float mass : masses) {
+        output << mass << '\n';
+    }
+}
+
+void printPoints(std::ofstream& output, const utils::PointVector points)
+{
+    output << '\n';
+    for (const utils::Point& point : points) {
+        output << point[0] << ',' << point[1] << ',' << point[2] << '\n';
+    }
+    output << std::flush;
+}
 } // namespace
 
 namespace node::master
@@ -76,8 +94,16 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
+    // TODO: better handling of exceptions: file not open, error while loading
+    // data
+
     utils::ParticlesData data{
         utils::loadParticlesData(programOptions->fileInput)};
+    std::ofstream output{programOptions->fileOutput,
+                         std::ios::out | std::ios::trunc};
+
+    printMasses(output, data.masses);
+    printPoints(output, data.positions);
 
     const auto totalParticles{data.positions.size()};
     const auto config{common::createNodeConfig(comm, totalParticles)};
@@ -91,19 +117,16 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
     common::initialShareData(comm, config, programOptions->simParams, data);
     data.velocities.resize(config.localParticles);
 
-    // TODO looping
-    algorithms::Leapfrog7 leapfrog{data, {0, config.localParticles}};
+    const auto savePositions{[&](utils::PointVector& positions,
+                                 const MPI::Datatype& pointMpiType) {
+        comm.Gatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL,
+                     data.positions.data(), config.particlesPerNode.data(),
+                     config.offsetPerNode.data(), pointMpiType, masterNodeRank);
 
-    auto pointMpiType{utils::Point::mpiType()};
-    pointMpiType.Commit();
-
-    const auto shareFunction{[&](std::vector<utils::Point>& positions) {
-        comm.Allgatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL, positions.data(),
-                        config.particlesPerNode.data(),
-                        config.offsetPerNode.data(), pointMpiType);
+        printPoints(output, positions);
     }};
-    leapfrog.performStep(1, shareFunction);
 
-    pointMpiType.Free();
+    common::performAlgorithm(comm, config, programOptions->simParams, data,
+                             savePositions);
 }
 } // namespace node::master

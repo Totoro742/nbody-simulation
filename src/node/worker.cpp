@@ -1,6 +1,6 @@
 #include "node/worker.hpp"
 
-#include "algorithms/Leapfrog7.hpp"
+#include "constants.hpp"
 #include "node/NodeConfig.hpp"
 #include "node/common.hpp"
 #include "utils/ParticlesData.hpp"
@@ -32,19 +32,17 @@ void run(const MPI::Comm& comm)
     auto data{createStoreForParticles(config)};
     common::initialShareData(comm, config, simParams, data);
 
-    // TODO looping
-    algorithms::Leapfrog7 leapfrog{data, {0, config.localParticles}};
+    const auto savePositionsOnMaster{
+        [&](utils::PointVector& positions, const MPI::Datatype& pointMpiType) {
+            const auto offset{config.offsetPerNode[config.nodeRank]};
+            const auto localPositions{positions.begin() + offset};
 
-    auto pointMpiType{utils::Point::mpiType()};
-    pointMpiType.Commit();
+            comm.Gatherv(localPositions->begin(), config.localParticles,
+                         pointMpiType, nullptr, nullptr, nullptr,
+                         MPI::DATATYPE_NULL, masterNodeRank);
+        }};
 
-    const auto shareFunction{[&](std::vector<utils::Point>& positions) {
-        comm.Allgatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL, positions.data(),
-                        config.particlesPerNode.data(),
-                        config.offsetPerNode.data(), pointMpiType);
-    }};
-    leapfrog.performStep(1, shareFunction);
-
-    pointMpiType.Free();
+    common::performAlgorithm(comm, config, simParams, data,
+                             savePositionsOnMaster);
 }
 } // namespace node::worker

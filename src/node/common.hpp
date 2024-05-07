@@ -1,5 +1,6 @@
 #pragma once
 
+#include "algorithms/Leapfrog7.hpp"
 #include "node/NodeConfig.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/SimParams.hpp"
@@ -29,4 +30,38 @@ inline void initialShareData(const MPI::Comm& comm,
     auto simParamsCopy{simParams};
     initialShareData(comm, config, simParamsCopy, data);
 };
+
+/**
+ * Performs distributed algorithm across `comm` based on passed `config`,
+ * `params` and `data`.
+ * After each iteration `callback` is executed
+ */
+template <std::invocable<utils::PointVector&, const MPI::Datatype&> Callback>
+void performAlgorithm(const MPI::Comm& comm,
+                      const NodeConfig& config,
+                      const utils::SimParams simParams,
+                      utils::ParticlesData& data,
+                      const Callback& callback)
+{
+    auto pointMpiType{utils::Point::mpiType()};
+    pointMpiType.Commit();
+
+    const auto offset{config.offsetPerNode[config.nodeRank]};
+    algorithms::Leapfrog7 leapfrog{data,
+                                   {offset, offset + config.localParticles}};
+
+    const auto shareFunction{[&](std::vector<utils::Point>& positions) {
+        comm.Allgatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL, positions.data(),
+                        config.particlesPerNode.data(),
+                        config.offsetPerNode.data(), pointMpiType);
+    }};
+
+    for (int step{0}; step < simParams.iterations; step++) {
+        leapfrog.performStep(simParams.timeStep, shareFunction);
+
+        callback(data.positions, pointMpiType);
+    }
+
+    pointMpiType.Free();
+}
 } // namespace node::common
