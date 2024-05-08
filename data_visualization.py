@@ -55,8 +55,7 @@ def update_graph(num):
 
     for i in range(len(masses)):
         if color is None:
-            ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2], s=normalized_masses[i],
-                       c='black')
+            ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2], s=normalized_masses[i])
         else:
             ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2],
                        color=colormap(normalized_masses[i]))
