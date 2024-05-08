@@ -19,7 +19,7 @@ masses = np.fromstring(data[0], sep='\n')
 positions = data[1:]
 positions = [position.split('\n') for position in positions]
 positions = [[np.fromstring(p, sep=',') for p in position] for position in positions]
-del positions[-1][3]
+del positions[-1][-1]
 
 positions = np.array(positions)
 
@@ -35,6 +35,7 @@ ax = fig.add_subplot(111, projection='3d')
 
 
 def update_graph(num):
+    print(f"step: {num}", end="\r")
     ax.clear()
     ax.set_xlabel('X')
     ax.set_ylabel('Y')
@@ -50,4 +51,5 @@ def update_graph(num):
 
 ani = animation.FuncAnimation(fig, update_graph, frames=len(positions), interval=10)
 
-ani.save('3d_scatter.gif', writer='imagemagick', fps=3)
+ani.save('3d_scatter.gif', writer='imagemagick', fps=20)
+print("\nsaved")
