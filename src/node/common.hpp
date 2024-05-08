@@ -59,7 +59,9 @@ void performAlgorithm(const MPI::Comm& comm,
     for (int step{0}; step < simParams.iterations; step++) {
         leapfrog.performStep(simParams.timeStep, shareFunction);
 
-        callback(data.positions, pointMpiType);
+        if ((step + 1) % simParams.saveStep == 0) {
+            callback(data.positions, pointMpiType);
+        }
     }
 
     pointMpiType.Free();

@@ -42,6 +42,13 @@ parseArguments(const std::vector<std::string>& args)
         .required()
         .store_into(options.simParams.iterations);
 
+    parser.add_argument("--save-step")
+        .help("number of iterations between saving to file")
+        .default_value(50u)
+        .nargs(1)
+        .scan<'u', unsigned>()
+        .store_into(options.simParams.saveStep);
+
     parser.add_argument("--input-file", "-i")
         .help("path to file with input data")
         .required()

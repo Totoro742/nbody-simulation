@@ -60,6 +60,7 @@ void initialShareData(const MPI::Comm& comm,
     comm.Bcast(&simParams.iterations, oneElement, MPI::UNSIGNED_LONG,
                masterNodeRank);
     comm.Bcast(&simParams.timeStep, oneElement, MPI::DOUBLE, masterNodeRank);
+    comm.Bcast(&simParams.saveStep, oneElement, MPI::UNSIGNED, masterNodeRank);
 
     auto pointMpiType{utils::Point::mpiType()};
     pointMpiType.Commit();
