@@ -2,8 +2,8 @@ import sys
 import numpy as np
 import matplotlib.pyplot as plt
 import matplotlib.animation as animation
+import matplotlib as mpl
 import matplotlib.cm as cm
-
 n = len(sys.argv)
 
 if n != 2 and n != 3:
@@ -32,14 +32,14 @@ y_min = np.min(positions[:, :, 1])
 z_max = np.max(positions[:, :, 2])
 z_min = np.min(positions[:, :, 2])
 
-normalized_masses = (masses - np.min(masses)) / (np.max(masses) - np.min(masses))
+normalized_masses = (masses - np.min(masses)) / (np.max(masses) - np.min(masses)) + 1
 
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 if color is not None:
-    fig.colorbar(cm.ScalarMappable(cmap=cm.get_cmap('viridis')), ax=ax, label='Mass', values=masses)
+    fig.colorbar(cm.ScalarMappable(cmap=mpl.colormaps['viridis']), ax=ax, label='Mass')
 
-colormap = cm.get_cmap('viridis')
+colormap = mpl.colormaps['viridis']
 
 
 def update_graph(num):
@@ -55,7 +55,7 @@ def update_graph(num):
 
     for i in range(len(masses)):
         if color is None:
-            ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2], s=normalized_masses[i] * 100,
+            ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2], s=normalized_masses[i],
                        c='black')
         else:
             ax.scatter(positions[num][i][0], positions[num][i][1], positions[num][i][2],
