@@ -34,6 +34,9 @@ z_min = np.min(positions[:, :, 2])
 
 normalized_masses = (masses - np.min(masses)) / (np.max(masses) - np.min(masses)) + 1
 
+if np.isnan(normalized_masses).any():
+    normalized_masses = np.linspace(5, 5, len(masses))
+
 fig = plt.figure()
 ax = fig.add_subplot(111, projection='3d')
 if color is not None:
