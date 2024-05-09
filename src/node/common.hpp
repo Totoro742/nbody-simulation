@@ -2,6 +2,7 @@
 
 #include "algorithms/Leapfrog7.hpp"
 #include "node/NodeConfig.hpp"
+#include "utils/MpiDatatypeRAII.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/SimParams.hpp"
 #include <mpi.h>
@@ -43,8 +44,7 @@ void performAlgorithm(const MPI::Comm& comm,
                       utils::ParticlesData& data,
                       const Callback& callback)
 {
-    auto pointMpiType{utils::Point::mpiType()};
-    pointMpiType.Commit();
+    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
 
     const auto offset{config.offsetPerNode[config.nodeRank]};
     algorithms::Leapfrog7 leapfrog{data,
@@ -63,7 +63,5 @@ void performAlgorithm(const MPI::Comm& comm,
             callback(data.positions, pointMpiType);
         }
     }
-
-    pointMpiType.Free();
 }
 } // namespace node::common

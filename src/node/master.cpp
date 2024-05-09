@@ -101,9 +101,6 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
-    // TODO: better handling of exceptions: file not open, error while loading
-    // data
-
     utils::ParticlesData data{
         utils::loadParticlesData(programOptions->fileInput)};
     std::ofstream output{programOptions->fileOutput,

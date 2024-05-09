@@ -2,6 +2,7 @@
 
 #include "constants.hpp"
 #include "node/NodeConfig.hpp"
+#include "utils/MpiDatatypeRAII.hpp"
 #include "utils/Point.hpp"
 #include <algorithm>
 #include <iterator>
@@ -62,8 +63,7 @@ void initialShareData(const MPI::Comm& comm,
     comm.Bcast(&simParams.timeStep, oneElement, MPI::DOUBLE, masterNodeRank);
     comm.Bcast(&simParams.saveStep, oneElement, MPI::UNSIGNED, masterNodeRank);
 
-    auto pointMpiType{utils::Point::mpiType()};
-    pointMpiType.Commit();
+    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
 
     comm.Bcast(data.positions.data(), config.totalParticles, pointMpiType,
                masterNodeRank);
@@ -75,7 +75,5 @@ void initialShareData(const MPI::Comm& comm,
                   config.offsetPerNode.data(), pointMpiType,
                   isMasterNode ? MPI::IN_PLACE : data.velocities.data(),
                   config.localParticles, pointMpiType, masterNodeRank);
-
-    pointMpiType.Free();
 };
 } // namespace node::common
