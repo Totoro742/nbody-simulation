@@ -7,3 +7,5 @@ add_subdirectory(node)
 add_subdirectory(utils)
 
 target_link_libraries(nbody-mpi argparse)
+
+add_custom_target(clean-all COMMAND rm -rf ${CMAKE_BINARY_DIR})

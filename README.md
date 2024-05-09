@@ -17,6 +17,20 @@ cmake -B build/ -DCMAKE_CXX_COMPILER=mpic++
 cmake --build build
 ```
 
+## Execution
+
+Example execution, see `--help` for more information
+
+```bash
+mpiexec -n 4 ./build/src/nbody-mpi -i data.csv -n 5000 -t 1
+```
+
+## Clean up
+
+```bash
+cmake --build build/ --target clean-all
+```
+
 ## Example input and output
 
 In directory `sample-data` two files are present:
