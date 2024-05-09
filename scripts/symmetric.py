@@ -1,6 +1,6 @@
 import math
 
-with open("symetric.csv", "w") as file:
+with open("symmetric.csv", "w") as file:
     mass = 1000
     z = 0
     vz = 0
@@ -12,4 +12,4 @@ with open("symetric.csv", "w") as file:
         vx = -y * vscaler
         vy = x * vscaler
 
-        file.write(f"{x},{y},{z},{mass},({vx}, {vy}, {vz})\n")
+        file.write(f"{mass},{x},{y},{z},{vx},{vy},{vz}\n")

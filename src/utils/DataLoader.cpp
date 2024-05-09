@@ -20,7 +20,7 @@ ParticlesData loadParticlesData(const std::string& fileName)
         std::istringstream iss(line);
         float x, y, z, mass, v_x, v_y, v_z;
         char ch; // to read the commas and parentheses
-        if (!(iss >> x >> ch >> y >> ch >> z >> ch >> mass >> ch >> ch >> v_x >> ch >> v_y >> ch >> v_z >> ch)) {
+        if (!(iss >> mass >> ch >> x >> ch >> y >> ch >> z >> ch >> v_x >> ch >> v_y >> ch >> v_z)) {
             std::cerr << "Error while reading file: " << fileName << std::endl;
             return {};
         }
