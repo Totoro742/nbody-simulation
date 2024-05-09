@@ -1,6 +1,6 @@
 import math
 
-with open("symetric.csv", "w") as file:
+with open("symmetric.csv", "w") as file:
     mass = 1000
     z = 0
     vz = 0
