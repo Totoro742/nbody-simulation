@@ -13,6 +13,7 @@
 #include <ios>
 #include <mpi.h>
 #include <optional>
+#include <ostream>
 #include <string>
 #include <vector>
 
@@ -101,6 +102,8 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
+    std::cout << "Entering program" << std::endl;
+
     utils::ParticlesData data{
         utils::loadParticlesData(programOptions->fileInput)};
     std::ofstream output{programOptions->fileOutput,
@@ -121,16 +124,22 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
     common::initialShareData(comm, config, programOptions->simParams, data);
     data.velocities.resize(config.localParticles);
 
+    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
+
     const auto savePositions{[&](utils::PointVector& positions,
-                                 const MPI::Datatype& pointMpiType) {
+                                 const int iteration) {
         comm.Gatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL,
                      data.positions.data(), config.particlesPerNode.data(),
                      config.offsetPerNode.data(), pointMpiType, masterNodeRank);
 
         printPoints(output, positions);
+        std::cout << "\rsaved postion from iteration: "  << iteration + 1
+                  << std::flush;
     }};
 
     common::performAlgorithm(comm, config, programOptions->simParams, data,
                              savePositions);
+
+    std::cout << "\ncalculations completed" << std::endl;
 }
 } // namespace node::master

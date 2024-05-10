@@ -37,7 +37,7 @@ inline void initialShareData(const MPI::Comm& comm,
  * `params` and `data`.
  * After each iteration `callback` is executed
  */
-template <std::invocable<utils::PointVector&, const MPI::Datatype&> Callback>
+template <std::invocable<utils::PointVector&, const int> Callback>
 void performAlgorithm(const MPI::Comm& comm,
                       const NodeConfig& config,
                       const utils::SimParams simParams,
@@ -60,7 +60,7 @@ void performAlgorithm(const MPI::Comm& comm,
         leapfrog.performStep(simParams.timeStep, shareFunction);
 
         if ((step + 1) % simParams.saveStep == 0) {
-            callback(data.positions, pointMpiType);
+            callback(data.positions, step);
         }
     }
 }

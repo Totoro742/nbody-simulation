@@ -6,12 +6,13 @@ import matplotlib as mpl
 import matplotlib.cm as cm
 n = len(sys.argv)
 
-if n != 2 and n != 3:
-    print("Usage: python data_visualization.py filename [color]")
+if n != 3 and n != 4:
+    print("Usage: python data_visualization.py filename fps [color]")
     sys.exit(1)
 
 filename = sys.argv[1]
-color = sys.argv[2] if n == 3 else None
+fps = int(sys.argv[2])
+color = sys.argv[3] if n == 4 else None
 
 with open(filename, 'r') as f:
     data = f.read().split('\n\n')
@@ -65,7 +66,7 @@ def update_graph(num):
     return ax
 
 
-ani = animation.FuncAnimation(fig, update_graph, frames=len(positions), interval=10)
+ani = animation.FuncAnimation(fig, update_graph, frames=len(positions), interval=1)
 
-ani.save('3d_scatter.gif', writer='imagemagick', fps=20)
+ani.save('3d_scatter.gif', writer='imagemagick', fps=fps)
 print("\nsaved")

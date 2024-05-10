@@ -32,8 +32,10 @@ void run(const MPI::Comm& comm)
     auto data{createStoreForParticles(config)};
     common::initialShareData(comm, config, simParams, data);
 
+    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
+
     const auto savePositionsOnMaster{
-        [&](utils::PointVector& positions, const MPI::Datatype& pointMpiType) {
+        [&](utils::PointVector& positions, const int) {
             const auto offset{config.offsetPerNode[config.nodeRank]};
             const auto localPositions{positions.begin() + offset};
 
