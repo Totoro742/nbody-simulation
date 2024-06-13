@@ -2,7 +2,6 @@
 
 #include "ParticlesData.hpp"
 #include <string>
-#include <vector>
 
 namespace utils
 {

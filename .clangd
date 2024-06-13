@@ -1,7 +1,10 @@
 CompileFlags:
   CompilationDatabase: build
   Compiler: clang++
-  Add: 
+  Add:
     - -xc++
     - -Wall
-    - -I/usr/include/mpich-x86_64
+    - -I/opt/upcxx/include
+    - -I/opt/upcxx/gasnet.opt/include
+    - -I/opt/upcxx/gasnet.opt/include/udp-conduit
+    - -I/opt/upcxx/upcxx.opt.gasnet_seq.udp/gen_include

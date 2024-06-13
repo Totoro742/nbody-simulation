@@ -1,7 +1,7 @@
 #include "node/master.hpp"
 
 #include "argparse/argparse.hpp"
-#include "constants.hpp"
+#include "node/NodeConfig.hpp"
 #include "node/common.hpp"
 #include "utils/DataLoader.hpp"
 #include "utils/ParticlesData.hpp"
@@ -11,10 +11,11 @@
 #include <exception>
 #include <fstream>
 #include <ios>
-#include <mpi.h>
+#include <iostream>
 #include <optional>
 #include <ostream>
 #include <string>
+#include <upcxx/upcxx.hpp>
 #include <vector>
 
 namespace
@@ -91,14 +92,14 @@ void printPoints(std::ofstream& output, const utils::PointVector points)
 
 namespace node::master
 {
-void run(const MPI::Comm& comm, const std::vector<std::string>& args)
+void run(const std::vector<std::string>& args)
 {
     const auto programOptions{parseArguments(args)};
 
     // stop processes by sending 0 as number of particles
     if (not programOptions.has_value()) {
         constexpr int zeroParticles{0};
-        common::createNodeConfig(comm, zeroParticles);
+        common::createNodeConfig(zeroParticles);
         return;
     }
 
@@ -106,14 +107,8 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
 
     utils::ParticlesData data{
         utils::loadParticlesData(programOptions->fileInput)};
-    std::ofstream output{programOptions->fileOutput,
-                         std::ios::out | std::ios::trunc};
-
-    printMasses(output, data.masses);
-    printPoints(output, data.positions);
-
     const auto totalParticles{data.positions.size()};
-    const auto config{common::createNodeConfig(comm, totalParticles)};
+    const auto config{common::createNodeConfig(totalParticles)};
 
     if (totalParticles == 0) {
         std::fprintf(stderr, "No particles in file %s\n",
@@ -121,24 +116,48 @@ void run(const MPI::Comm& comm, const std::vector<std::string>& args)
         return;
     }
 
-    common::initialShareData(comm, config, programOptions->simParams, data);
+    std::ofstream output{programOptions->fileOutput,
+                         std::ios::out | std::ios::trunc};
+    printMasses(output, data.masses);
+    printPoints(output, data.positions);
+
+    common::initialShareData(config, programOptions->simParams, data);
+    const common::DistData distData{upcxx::dist_object{
+        upcxx::new_array<utils::Point>(config.localParticles)}};
+    upcxx::barrier();
+
+    // distribute velocities
+    common::rputOverDistributed(data.velocities, config, distData);
+    upcxx::barrier();
     data.velocities.resize(config.localParticles);
 
-    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
+    // give time to copy on workers
+    upcxx::barrier();
 
-    const auto savePositions{[&](utils::PointVector& positions,
-                                 const int iteration) {
-        comm.Gatherv(MPI::IN_PLACE, 0, MPI::DATATYPE_NULL,
-                     data.positions.data(), config.particlesPerNode.data(),
-                     config.offsetPerNode.data(), pointMpiType, masterNodeRank);
+    // distribute positions
+    common::rputOverDistributed(data.positions, config, distData);
+    upcxx::barrier();
 
-        printPoints(output, positions);
-        std::cout << "\rsaved postion from iteration: "  << iteration + 1
-                  << std::flush;
-    }};
+    const auto savePositions{
+        [&](utils::PointVector& positions, const int iteration) {
+            const auto local_ptr{distData->local()};
+            const auto data_ptr{positions.data()};
+            std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
+            upcxx::barrier();
 
-    common::performAlgorithm(comm, config, programOptions->simParams, data,
+            common::rgetOverDistributed(positions, config, distData);
+            upcxx::barrier();
+
+            printPoints(output, positions);
+
+            std::cout << "\rsaved postion from iteration: " << iteration + 1
+                      << std::flush;
+        }};
+
+    common::performAlgorithm(config, programOptions->simParams, data, distData,
                              savePositions);
+
+    upcxx::delete_array(*distData);
 
     std::cout << "\ncalculations completed" << std::endl;
 }

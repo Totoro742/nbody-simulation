@@ -3,21 +3,21 @@
 #include "node/worker.hpp"
 #include <cstdio>
 #include <exception>
-#include <mpi.h>
 #include <string>
+#include <upcxx/upcxx.hpp>
 #include <vector>
 
 int main(int argc, char** argv)
 {
-    MPI::Init(argc, argv);
+    upcxx::init();
 
     try {
-        const int nodeRank{MPI::COMM_WORLD.Get_rank()};
+        const int nodeRank{upcxx::rank_me()};
         if (nodeRank == masterNodeRank) {
             const std::vector<std::string> args{argv, argv + argc};
-            node::master::run(MPI::COMM_WORLD, args);
+            node::master::run(args);
         } else {
-            node::worker::run(MPI::COMM_WORLD);
+            node::worker::run();
         }
     } catch (const std::exception& err) {
         std::fprintf(stderr, "handling exception in main:\n  %s\n", err.what());
@@ -25,6 +25,6 @@ int main(int argc, char** argv)
         std::fprintf(stderr, "unknown exception\n");
     }
 
-    MPI::Finalize();
+    upcxx::finalize();
     return 0;
 }

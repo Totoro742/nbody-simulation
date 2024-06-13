@@ -1,28 +1,29 @@
 #include "node/worker.hpp"
 
-#include "constants.hpp"
 #include "node/NodeConfig.hpp"
 #include "node/common.hpp"
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
 #include "utils/SimParams.hpp"
+#include <cstdio>
+#include <upcxx/upcxx.hpp>
 #include <vector>
 
 namespace
 {
 utils::ParticlesData createStoreForParticles(const node::NodeConfig& config)
 {
-    return {std::vector<utils::Point>(config.totalParticles),
-            std::vector<utils::Point>(config.localParticles),
+    return {utils::PointVector(config.totalParticles),
+            utils::PointVector(config.localParticles),
             std::vector<float>(config.totalParticles)};
 }
 } // namespace
 
 namespace node::worker
 {
-void run(const MPI::Comm& comm)
+void run()
 {
-    const auto config{common::createNodeConfig(comm)};
+    const auto config{common::createNodeConfig()};
 
     if (config.totalParticles == 0) {
         return;
@@ -30,21 +31,43 @@ void run(const MPI::Comm& comm)
 
     utils::SimParams simParams{};
     auto data{createStoreForParticles(config)};
-    common::initialShareData(comm, config, simParams, data);
+    common::initialShareData(config, simParams, data);
+    const common::DistData distData{upcxx::dist_object{
+        upcxx::new_array<utils::Point>(config.localParticles)}};
+    upcxx::barrier();
 
-    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
+    // distribute velocities
+    upcxx::barrier();
+
+    // copy on workers
+    const auto offset{config.offsetPerNode[config.nodeRank]};
+    const auto local_ptr{distData->local()};
+    std::copy(local_ptr, local_ptr + config.localParticles,
+              data.velocities.data());
+
+    upcxx::barrier();
+
+    // distribute positions
+    upcxx::barrier();
+
+    // copy on workers with offset
+    std::copy(local_ptr, local_ptr + config.localParticles,
+              data.positions.data() + offset);
 
     const auto savePositionsOnMaster{
         [&](utils::PointVector& positions, const int) {
-            const auto offset{config.offsetPerNode[config.nodeRank]};
-            const auto localPositions{positions.begin() + offset};
+            const auto local_ptr{distData->local()};
+            const auto data_ptr{positions.data() + offset};
+            std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
+            upcxx::barrier();
 
-            comm.Gatherv(localPositions->begin(), config.localParticles,
-                         pointMpiType, nullptr, nullptr, nullptr,
-                         MPI::DATATYPE_NULL, masterNodeRank);
+            // RMA from master
+            upcxx::barrier();
         }};
 
-    common::performAlgorithm(comm, config, simParams, data,
+    common::performAlgorithm(config, simParams, data, distData,
                              savePositionsOnMaster);
+
+    upcxx::delete_array(*distData);
 }
 } // namespace node::worker

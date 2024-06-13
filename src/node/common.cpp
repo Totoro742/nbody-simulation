@@ -2,18 +2,17 @@
 
 #include "constants.hpp"
 #include "node/NodeConfig.hpp"
-#include "utils/MpiDatatypeRAII.hpp"
-#include "utils/Point.hpp"
 #include <algorithm>
+#include <cstdio>
 #include <iterator>
-#include <mpi.h>
 #include <numeric>
 #include <optional>
+#include <upcxx/upcxx.hpp>
 
 namespace
 {
-/* calculate num of local particles that only first/master node has less
- * particles
+/*
+ * calculate num of local particles
  */
 void calcParticlesPerNode(node::NodeConfig& config)
 {
@@ -37,43 +36,66 @@ void calcParticlesPerNode(node::NodeConfig& config)
 
 namespace node::common
 {
-node::NodeConfig createNodeConfig(const MPI::Comm& comm,
-                                  const std::optional<int> totalParticles)
+node::NodeConfig createNodeConfig(const std::optional<int> totalParticles)
 {
-    node::NodeConfig config{.totalNodes = config.totalNodes = comm.Get_size(),
-                            .nodeRank = config.nodeRank = comm.Get_rank(),
+    node::NodeConfig config{.totalNodes = config.totalNodes = upcxx::rank_n(),
+                            .nodeRank = config.nodeRank = upcxx::rank_me(),
                             .totalParticles = totalParticles.value_or(0)};
 
-    constexpr int oneElement{1};
-    comm.Bcast(&config.totalParticles, oneElement, MPI::INT, masterNodeRank);
+    config.totalParticles =
+        upcxx::broadcast(config.totalParticles, masterNodeRank).wait();
 
     calcParticlesPerNode(config);
 
     return config;
 };
 
-void initialShareData(const MPI::Comm& comm,
-                      const NodeConfig& config,
+void initialShareData(const NodeConfig& config,
                       utils::SimParams& simParams,
                       utils::ParticlesData& data)
 {
-    constexpr int oneElement{1};
-    comm.Bcast(&simParams.iterations, oneElement, MPI::UNSIGNED_LONG,
-               masterNodeRank);
-    comm.Bcast(&simParams.timeStep, oneElement, MPI::DOUBLE, masterNodeRank);
-    comm.Bcast(&simParams.saveStep, oneElement, MPI::UNSIGNED, masterNodeRank);
+    simParams.iterations =
+        upcxx::broadcast(simParams.iterations, masterNodeRank).wait();
+    simParams.timeStep =
+        upcxx::broadcast(simParams.timeStep, masterNodeRank).wait();
+    simParams.saveStep =
+        upcxx::broadcast(simParams.saveStep, masterNodeRank).wait();
 
-    utils::MpiDatatypeRAII pointMpiType{utils::Point::mpiType()};
-
-    comm.Bcast(data.positions.data(), config.totalParticles, pointMpiType,
-               masterNodeRank);
-    comm.Bcast(data.masses.data(), config.totalParticles, MPI::INT,
-               masterNodeRank);
-
-    const bool isMasterNode{config.nodeRank == masterNodeRank};
-    comm.Scatterv(data.velocities.data(), config.particlesPerNode.data(),
-                  config.offsetPerNode.data(), pointMpiType,
-                  isMasterNode ? MPI::IN_PLACE : data.velocities.data(),
-                  config.localParticles, pointMpiType, masterNodeRank);
+    upcxx::broadcast(data.masses.data(), config.totalParticles, masterNodeRank)
+        .wait();
 };
+
+void rputOverDistributed(const utils::PointVector& data,
+                         const NodeConfig& config,
+                         const DistData& distData)
+{
+    auto future = upcxx::make_future();
+    for (int rank{0}; rank < config.totalNodes; ++rank) {
+        auto callback{
+            [&data, &config, rank](const upcxx::global_ptr<utils::Point> ptr) {
+                return upcxx::rput(data.data() + config.offsetPerNode[rank],
+                                   ptr, config.particlesPerNode[rank]);
+            }};
+        const auto new_future{distData.fetch(rank).then(callback)};
+        future = upcxx::when_all(future, new_future);
+    }
+    future.wait();
+}
+
+void rgetOverDistributed(utils::PointVector& data,
+                         const NodeConfig& config,
+                         const DistData& distData)
+{
+    auto future = upcxx::make_future();
+    for (int rank{0}; rank < config.totalNodes; ++rank) {
+        const auto callback{[&data, &config,
+                             rank](const upcxx::global_ptr<utils::Point> ptr) {
+            return upcxx::rget(ptr, data.data() + config.offsetPerNode[rank],
+                               config.particlesPerNode[rank]);
+        }};
+        const auto new_future{distData.fetch(rank).then(callback)};
+        future = upcxx::when_all(future, new_future);
+    }
+    future.wait();
+}
 } // namespace node::common
