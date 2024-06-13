@@ -61,9 +61,11 @@ void performAlgorithm(const NodeConfig& config,
     const auto shareFunction{[&](utils::PointVector& positions) {
         const auto local_ptr{distData->local()};
         const auto data_ptr{positions.data() + offset};
-
         std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
+        upcxx::barrier();
+
         rgetOverDistributed(positions, config, distData);
+        upcxx::barrier();
     }};
 
     for (int step{0}; step < simParams.iterations; step++) {
