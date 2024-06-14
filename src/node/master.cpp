@@ -140,13 +140,7 @@ void run(const std::vector<std::string>& args)
 
     const auto savePositions{
         [&](utils::PointVector& positions, const int iteration) {
-            const auto local_ptr{distData->local()};
-            const auto data_ptr{positions.data()};
-            std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
-            upcxx::barrier();
-
             common::rgetOverDistributed(positions, config, distData);
-            upcxx::barrier();
 
             printPoints(output, positions);
 

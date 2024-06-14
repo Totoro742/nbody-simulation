@@ -5,9 +5,14 @@
 #include "utils/ParticlesData.hpp"
 #include "utils/Point.hpp"
 #include "utils/SimParams.hpp"
+#include <chrono>
 #include <cstdio>
+#include <cstdlib>
 #include <optional>
 #include <upcxx/upcxx.hpp>
+
+#include <cstdlib>
+#include <thread>
 
 namespace node::common
 {
@@ -58,20 +63,26 @@ void performAlgorithm(const NodeConfig& config,
     algorithms::Leapfrog7 leapfrog{data,
                                    {offset, offset + config.localParticles}};
 
-    const auto shareFunction{[&](utils::PointVector& positions) {
+    std::srand(time(0));
+
+    const auto copyToShared{[&](const utils::PointVector& positions) {
         const auto local_ptr{distData->local()};
         const auto data_ptr{positions.data() + offset};
+        upcxx::barrier();
         std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
         upcxx::barrier();
+    }};
 
+    const auto shareFunction{[&](utils::PointVector& positions) {
+        copyToShared(positions);
         rgetOverDistributed(positions, config, distData);
-        upcxx::barrier();
     }};
 
     for (int step{0}; step < simParams.iterations; step++) {
         leapfrog.performStep(simParams.timeStep, shareFunction);
 
         if ((step + 1) % simParams.saveStep == 0) {
+            copyToShared(data.positions);
             callback(data.positions, step);
         }
     }

@@ -54,19 +54,9 @@ void run()
     std::copy(local_ptr, local_ptr + config.localParticles,
               data.positions.data() + offset);
 
-    const auto savePositionsOnMaster{
-        [&](utils::PointVector& positions, const int) {
-            const auto local_ptr{distData->local()};
-            const auto data_ptr{positions.data() + offset};
-            std::copy(data_ptr, data_ptr + config.localParticles, local_ptr);
-            upcxx::barrier();
+    const auto emptyCallback{[&](utils::PointVector&, const int) {}};
 
-            // RMA from master
-            upcxx::barrier();
-        }};
-
-    common::performAlgorithm(config, simParams, data, distData,
-                             savePositionsOnMaster);
+    common::performAlgorithm(config, simParams, data, distData, emptyCallback);
 
     upcxx::delete_array(*distData);
 }
