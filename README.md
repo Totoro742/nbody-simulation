@@ -1,6 +1,7 @@
 # N-body simulation
 
 Distributed program for college course
+Check branch upcxx for implementation using upcxx instead of mpi
 
 ## Building
 
